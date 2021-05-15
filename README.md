@@ -14,7 +14,7 @@ npm install
 node index.js RESPONSES_FILE.csv ANSWER_FILE.txt
 ```
 
-*note: ANSWER_FILE.txt must be a file with the correct answer alone on each new line (no artists supported yet sorry it's 2:30am)*
+*note: ANSWER_FILE.txt must be a file with the correct answer alone on each new line (no artists supported yet sorry it's 2:30am)*  
 *example:*
 ```
 Harry Potter Main Theme
