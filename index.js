@@ -1,5 +1,6 @@
 const levenshtein = require("fast-levenshtein");
 const fs = require('fs');
+const csv = require('csv-parser')
 
 const thresholdDistance = (
 	str1,
@@ -28,65 +29,60 @@ slidingThresholdDistance = (
 }
 
 const sani = val => val.toLowerCase().replace(/[^a-zA-Z0-9 ]/g, "").replace(/  /g," ").replace(/(m?a?i?n? ?theme)/g, "").trim();
-const players = {};
+const results = [];
+fs.createReadStream(process.argv[2])
+	.pipe(csv())
+	.on('data', (data) => results.push(data))
+	.on('end', () => {
+		const players = {}
+		results.map(csv => ({
+			name: csv["Name"] || csv["name"] || csv[Object.keys(csv)[1]],
+			score: 0,
+			ans: Object.keys(csv).filter(key => !key.match(/(name|timestamp)/gi)).map(key => csv[key]).map(sani)
+		})).forEach((player, i) => {
+			players[player.name] = player;
+		});
 
-fs.readFile( process.argv[2], (err, data) => {
-	if (err) {
-		throw err;
-	}
-	data.toString().split("\n").forEach((line, i) => {
-		if(line.length < 2 || line.split(",")[0].toLowerCase() === "timestamp"){
-			return;
-		}
-		const player = line.split(",")[1];
-		if(!Object.keys(players).includes(player)){
-			players[player] = {
-				score: 0,
-				ans: line.split(",").slice(2).map(sani)
-			};
-		}
-	});
-
-	fs.readFile( process.argv[3], (err, data) => {
-		if (err) {
-			throw err;
-		}
-		const corrects = [];
-		data.toString().split("\n").forEach((line, i) => {
-			if(line.length < 2){
-				return;
+		fs.readFile( process.argv[3], (err, data) => {
+			if (err) {
+				throw err;
 			}
-			const ans = sani(line);
-			corrects.push(ans);
-			Object.keys(players).forEach(player => {
-				//console.dir(`${ans} - ${players[player].ans[i]} - ${slidingThresholdDistance(players[player].ans[i], ans, 2)}`);
-				players[player].score += slidingThresholdDistance(players[player].ans[i], ans, 2) ? 1 : 0;
-			});
-		});
-		const scores = {};
-		Object.keys(players).sort((a,b) => players[b].score - players[a].score).forEach(player => {
-			scores[player.substring(0,20)] = {
-				score: players[player].score
-			};
-			//console.log(`${player} - ${players[player].score}`);
-		});
-		console.table(scores);
-		console.log("\n");
-
-		const graph = {};
-		for(let i=0; i<corrects.length; i++ ){
-			graph[corrects[i]] = {};
-			for(let j=0; j<Object.keys(players).length; j++ ){
-				if(slidingThresholdDistance(players[Object.keys(players)[j]].ans[i], corrects[i], 2)){
-					graph[corrects[i]][Object.keys(players)[j].slice(0,20)] = "✓";
+			const corrects = [];
+			data.toString().split("\n").forEach((line, i) => {
+				if(line.length < 2){
+					return;
 				}
-				//graph[corrects[i]][Object.keys(players)[j].slice(0,20)] = slidingThresholdDistance(players[Object.keys(players)[j]].ans[i], corrects[i], 2) ? '✓' : ;
+				const ans = sani(line);
+				corrects.push(ans);
+				Object.keys(players).forEach(player => {
+					//console.dir(`${ans} - ${players[player].ans[i]} - ${slidingThresholdDistance(players[player].ans[i], ans, 2)}`);
+					players[player].score += slidingThresholdDistance(players[player].ans[i], ans, 2) ? 1 : 0;
+				});
+			});
+			const scores = {};
+			Object.keys(players).sort((a,b) => players[b].score - players[a].score).forEach(player => {
+				scores[player.substring(0,20)] = {
+					score: players[player].score
+				};
+				//console.log(`${player} - ${players[player].score}`);
+			});
+			console.table(scores);
+			console.log("\n");
+
+			const graph = {};
+			for(let i=0; i<corrects.length; i++ ){
+				graph[corrects[i]] = {};
+				for(let j=0; j<Object.keys(players).length; j++ ){
+					if(slidingThresholdDistance(players[Object.keys(players)[j]].ans[i], corrects[i], 2)){
+						graph[corrects[i]][Object.keys(players)[j].slice(0,20)] = "✓";
+					}
+					//graph[corrects[i]][Object.keys(players)[j].slice(0,20)] = slidingThresholdDistance(players[Object.keys(players)[j]].ans[i], corrects[i], 2) ? '✓' : ;
+				}
 			}
-		}
-		//const header = corrects.reduce((previous, current) => previous + " " + current, "");
-		//console.dir(header.slice(1));
-		console.table(graph);
+			//const header = corrects.reduce((previous, current) => previous + " " + current, "");
+			//console.dir(header.slice(1));
+			console.table(graph);
+
+		});
 
 	});
-
-});
