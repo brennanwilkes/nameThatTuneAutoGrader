@@ -48,16 +48,30 @@ fs.createReadStream(process.argv[2])
 				throw err;
 			}
 			const corrects = [];
+			const correctPairs = [];
 			data.toString().split("\n").forEach((line, i) => {
 				if(line.length < 2){
 					return;
 				}
-				const ans = sani(line);
-				corrects.push(ans);
-				Object.keys(players).forEach(player => {
-					//console.dir(`${ans} - ${players[player].ans[i]} - ${slidingThresholdDistance(players[player].ans[i], ans, 2)}`);
-					players[player].score += slidingThresholdDistance(players[player].ans[i], ans, 2) ? 1 : 0;
-				});
+				if(line.includes(",")){
+					const ans1 = sani(line.split(",")[0]);
+					const ans2 = sani(line.split(",")[1]);
+					corrects.push(`${ans1}, ${ans2}`);
+					correctPairs.push([ans1, ans2]);
+					Object.keys(players).forEach(player => {
+						//console.dir(`${ans} - ${players[player].ans[i]} - ${slidingThresholdDistance(players[player].ans[i], ans, 2)}`);
+						players[player].score += slidingThresholdDistance(players[player].ans[i], ans1, 2) ? 0.5 : 0;
+						players[player].score += slidingThresholdDistance(players[player].ans[i], ans2, 2) ? 0.5 : 0;
+					});
+				}
+				else{
+					const ans = sani(line);
+					corrects.push(ans);
+					Object.keys(players).forEach(player => {
+						//console.dir(`${ans} - ${players[player].ans[i]} - ${slidingThresholdDistance(players[player].ans[i], ans, 2)}`);
+						players[player].score += slidingThresholdDistance(players[player].ans[i], ans, 2) ? 1 : 0;
+					});
+				}
 			});
 			const scores = {};
 			Object.keys(players).sort((a,b) => players[b].score - players[a].score).forEach(player => {
@@ -70,13 +84,23 @@ fs.createReadStream(process.argv[2])
 			console.log("\n");
 
 			const graph = {};
+			let s1, s2;
 			for(let i=0; i<corrects.length; i++ ){
 				graph[corrects[i]] = {};
 				for(let j=0; j<Object.keys(players).length; j++ ){
-					if(slidingThresholdDistance(players[Object.keys(players)[j]].ans[i], corrects[i], 2)){
-						graph[corrects[i]][Object.keys(players)[j].slice(0,20)] = "✓";
+					if(correctPairs[i] && correctPairs[i].length === 2){
+						s1 = slidingThresholdDistance(players[Object.keys(players)[j]].ans[i], correctPairs[i][0], 2) ? 0.5 : 0;
+						s2 = slidingThresholdDistance(players[Object.keys(players)[j]].ans[i], correctPairs[i][1], 2) ? 0.5 : 0;
+						if(s1 || s2){
+							graph[corrects[i]][Object.keys(players)[j].slice(0,20)] = s1 && s2 ? 1 : 0.5;
+						}
 					}
-					//graph[corrects[i]][Object.keys(players)[j].slice(0,20)] = slidingThresholdDistance(players[Object.keys(players)[j]].ans[i], corrects[i], 2) ? '✓' : ;
+					else{
+						if(slidingThresholdDistance(players[Object.keys(players)[j]].ans[i], corrects[i], 2)){
+							graph[corrects[i]][Object.keys(players)[j].slice(0,20)] = 1;
+						}
+						//graph[corrects[i]][Object.keys(players)[j].slice(0,20)] = slidingThresholdDistance(players[Object.keys(players)[j]].ans[i], corrects[i], 2) ? '✓' : ;
+					}
 				}
 			}
 			//const header = corrects.reduce((previous, current) => previous + " " + current, "");
