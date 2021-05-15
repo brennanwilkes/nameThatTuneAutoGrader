@@ -28,3 +28,18 @@ The Good, The Bad and the Ugly Main Theme
 28 Days Later Theme
 Inception Main Theme
 ```
+
+*OR, as a comma separated list of song name/artist pairs*  
+*example:*  
+```
+Kansas, Carry On My Wayward Son
+Blur, Song 2
+Tupac, California Love
+Fleetwood Mac, Go Your Own Way
+Ozzy Osbourne, Crazy Train
+Dexys Midnight Runners, Come On Eileen
+Skrillex, Bangarang
+The Killers, Mr Brightside
+The Verve, Bittersweet Symphony
+Lil Nas X, Old Town Road
+```
